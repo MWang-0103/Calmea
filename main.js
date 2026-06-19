@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { products } from './products.js';
 import { logoBase64 } from './logo.js';
 
@@ -125,23 +126,30 @@ const scene = new THREE.Scene();
 // Scene background is kept transparent to let CSS ambient glows show through
 
 
-const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
 camera.position.set(0, 45, 35);
 if (window.innerWidth < 768) { 
-  camera.position.set(0, 65, 50); 
+  camera.position.set(0, 95, 85); // Zoomed out further to ensure empty safe scrolling space
 }
 camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(1); // Force exactly 1 for maximum FPS on high-DPI laptops
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.85;
 renderer.setClearColor(0x000000, 0);
 container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.enableZoom = false;
+controls.enablePan = false;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.5;
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -808,6 +816,7 @@ function onPointerDown(event) {
     const intersectsDrawer = raycaster.intersectObject(drawerHitPlane);
     if (intersectsDrawer.length > 0) {
       isDragging = true;
+      controls.enabled = false; // Disable auto-rotate when manually interacting
       dragDistance = 0;
       document.body.style.cursor = 'grabbing';
       previousMousePosition = { x: event.clientX, y: event.clientY };
@@ -852,6 +861,7 @@ function onPointerMove(event) {
     if (innerDrawer.position.x >= MAX_SLIDE_DISTANCE) {
       drawerOpened = true;
       isDragging = false;
+      controls.enabled = true; // Re-enable for model viewing
       document.body.style.cursor = 'default';
       const indicator = document.getElementById('drag-indicator');
       if (indicator) indicator.classList.remove('visible');
@@ -882,6 +892,7 @@ function onPointerMove(event) {
 function onPointerUp() {
   if (isDragging && !drawerOpened) {
     isDragging = false;
+    controls.enabled = true; // Re-enable OrbitControls after drag ends
     document.body.style.cursor = 'grab';
     
     // If the user barely dragged, treat it as a click and open automatically
@@ -947,9 +958,11 @@ window.addEventListener('pointermove', onPointerMove);
 window.addEventListener('pointerup', onPointerUp);
 
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(width, height);
 });
 
 let fpsLastTime = performance.now();
@@ -993,9 +1006,9 @@ function animate() {
     boxGroup.position.y += (0 - boxGroup.position.y) * 0.1;
   }
 
-  // Dynamic Camera Tracking
-  camera.position.x += ((innerDrawer.position.x / 2) - camera.position.x) * 0.1;
-  camera.lookAt(camera.position.x, 0, 0);
+  // Dynamic Camera Tracking (Shift target rather than absolute position)
+  controls.target.x += ((innerDrawer.position.x / 2) - controls.target.x) * 0.1;
+  controls.update();
 
   // Very subtle parallax
   if (drawerOpened || isDragging) {

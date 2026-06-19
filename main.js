@@ -300,8 +300,14 @@ const innerDrawer = new THREE.Group();
 innerDrawer.position.x = 0; 
 boxGroup.add(innerDrawer);
 
+const hotspotAnchor = new THREE.Object3D();
+const drW = slW - 0.2;
+const drH = slH - 0.2;
+const drD = slD - 0.2;
+hotspotAnchor.position.set(drW/2 + 0.4, 0, 0); // Attach exactly to the pull tab
+innerDrawer.add(hotspotAnchor);
+
 // Drawer solid floor (thinner base instead of a huge block)
-const drW = slW - 0.2, drH = slH - 0.2, drD = slD - 0.2;
 const drawerBaseGeo = new RoundedBoxGeometry(drW, th, drD, 2, 0.05);
 const drawerBase = new THREE.Mesh(drawerBaseGeo, drawerMaterial);
 drawerBase.position.y = -drH/2 + th/2;
@@ -970,21 +976,52 @@ function onPointerUp() {
 
 let currentAnimationId = null;
 
-function animateDrawer(targetX, callback) {
+function animateDrawer(targetX, onComplete) {
   if (currentAnimationId) cancelAnimationFrame(currentAnimationId);
-  function step() {
-    if (isDragging) return; // Cancel animation if user grabs the drawer
-    const diff = targetX - innerDrawer.position.x;
-    if (Math.abs(diff) > 0.1) {
-      innerDrawer.position.x += diff * 0.15;
-      currentAnimationId = requestAnimationFrame(step);
+  const startX = innerDrawer.position.x;
+  const duration = 800; 
+  const startTime = performance.now();
+
+  function updateSlide(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+    innerDrawer.position.x = startX + (targetX - startX) * easeOutQuart;
+
+    if (progress < 1) {
+      currentAnimationId = requestAnimationFrame(updateSlide);
     } else {
-      innerDrawer.position.x = targetX;
-      if (callback) callback();
+      if (onComplete) onComplete();
     }
   }
-  step();
+  currentAnimationId = requestAnimationFrame(updateSlide);
 }
+
+// Guaranteed DOM-based Tap-to-Open (Bypasses 3D touch conflicts)
+const tapPromptEl = document.getElementById('tap-prompt');
+if (tapPromptEl) {
+  tapPromptEl.addEventListener('click', () => {
+    if (!drawerOpened) {
+      controls.enabled = false;
+      animateDrawer(MAX_SLIDE_DISTANCE, () => {
+        drawerOpened = true;
+        controls.enabled = true;
+        const indicator = document.getElementById('drag-indicator');
+        if (indicator) indicator.classList.remove('visible');
+        tapPromptEl.style.opacity = '0';
+        tapPromptEl.style.pointerEvents = 'none';
+        const scrollInd = document.getElementById('scroll-indicator');
+        if (scrollInd) {
+          scrollInd.classList.remove('hidden');
+          scrollInd.classList.add('visible');
+        }
+      });
+    }
+  });
+}
+
+// Window resize handling
 
 function startIdleAnimation() {
   let loops = 0;
@@ -1068,6 +1105,30 @@ function animate() {
   if (drawerOpened || isDragging) {
     scene.rotation.y += (mouse.x * 0.05 - scene.rotation.y) * 0.05;
     scene.rotation.x += (-mouse.y * 0.05 - scene.rotation.x) * 0.05;
+  }
+
+  // 3D Hotspot Projection (Tracks the drawer handle in screen space)
+  if (!drawerOpened && tapPromptEl) {
+    const vector = new THREE.Vector3();
+    hotspotAnchor.getWorldPosition(vector);
+    vector.project(camera);
+
+    // Check if the point is behind the camera
+    if (vector.z > 1) {
+      tapPromptEl.style.opacity = '0';
+      tapPromptEl.style.pointerEvents = 'none';
+    } else {
+      const rect = renderer.domElement.getBoundingClientRect();
+      const x = (vector.x * 0.5 + 0.5) * rect.width;
+      const y = (vector.y * -0.5 + 0.5) * rect.height;
+      tapPromptEl.style.left = `${x}px`;
+      tapPromptEl.style.top = `${y}px`;
+      
+      // Keep it visible and interactive if not explicitly hidden by the click handler
+      if (tapPromptEl.style.pointerEvents !== 'none') {
+        tapPromptEl.style.opacity = '1';
+      }
+    }
   }
 
   renderer.render(scene, camera);

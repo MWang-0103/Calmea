@@ -487,7 +487,7 @@ positions.forEach((pos) => {
   if (pos.id === 'cleanser') { r = 2.4; h = 12.0; }
   else if (pos.id === 'toner') { r = 2.1; h = 9.0; }
   else if (pos.id === 'sunscreen') { r = 1.8; h = 10.0; isTube = true; }
-  else if (pos.id === 'serum') { r = 1.8; h = 8.5; }
+  else if (pos.id === 'serum') { r = 2.0; h = 6.0; } // Resized to 50mL (shorter and wider)
   else if (pos.id === 'mist') { r = 1.8; h = 9.0; }
   else if (pos.id === 'moisturiser') { r = 2.2; h = 4.0; }
 
@@ -677,7 +677,7 @@ positions.forEach((pos) => {
     capMesh = new THREE.Mesh(capGeo, capMat);
     capMesh.position.y = h/2 + capH/2;
   }
-  // 4. Serum (Dropper)
+  // 4. Serum (50mL Treatment Pump)
   else if (pos.id === 'serum') {
     const bodyGeo = new THREE.CylinderGeometry(r, r, h, 32);
     bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
@@ -685,17 +685,40 @@ positions.forEach((pos) => {
     bodyMesh.add(liquidMesh);
     addCurvedLabels(bodyMesh, r, r, h*0.6, pos.flip);
     
-    const capH = 1.0;
-    const capGeo = new THREE.CylinderGeometry(r, r, capH, 32);
-    const bulbGeo = new THREE.SphereGeometry(r*0.6, 32, 32);
-    
     const capGroup = new THREE.Group();
-    const capBase = new THREE.Mesh(capGeo, capMat);
-    const bulb = new THREE.Mesh(bulbGeo, new THREE.MeshStandardMaterial({color: '#EEEEEE', roughness: 0.9}));
-    bulb.position.y = capH/2 + r*0.4;
+
+    // Stacked pump geometry
+    const collarH = 0.8;
+    const collarGeo = new THREE.CylinderGeometry(r*1.02, r*1.02, collarH, 32);
+    const collarMesh = new THREE.Mesh(collarGeo, capMat);
+    collarMesh.position.y = collarH/2;
     
-    capGroup.add(capBase, bulb);
-    capGroup.position.y = h/2 + capH/2;
+    const neck1H = 0.4;
+    const neck1Geo = new THREE.CylinderGeometry(r*0.7, r*0.8, neck1H, 32);
+    const neck1Mesh = new THREE.Mesh(neck1Geo, capMat);
+    neck1Mesh.position.y = collarH + neck1H/2;
+
+    const neck2H = 0.5;
+    const neck2Geo = new THREE.CylinderGeometry(r*0.5, r*0.5, neck2H, 32);
+    const neck2Mesh = new THREE.Mesh(neck2Geo, capMat);
+    neck2Mesh.position.y = collarH + neck1H + neck2H/2;
+
+    const headH = 0.9;
+    const headGeo = new THREE.CylinderGeometry(r*0.6, r*0.6, headH, 32);
+    const headMesh = new THREE.Mesh(headGeo, capMat);
+    headMesh.position.y = collarH + neck1H + neck2H + headH/2;
+
+    const nozzleL = 0.9; // Shortened nozzle
+    const nozzleGeo = new THREE.CylinderGeometry(r*0.12, r*0.18, nozzleL, 32);
+    const nozzleMesh = new THREE.Mesh(nozzleGeo, capMat);
+    // Point the nozzle up towards the camera (local +Z) with a slight downward dispensing angle
+    nozzleMesh.rotation.x = Math.PI / 2 - 0.15; 
+    nozzleMesh.position.set(0, collarH + neck1H + neck2H + headH*0.4, r*0.5 + nozzleL/2 - 0.2);
+
+    capGroup.add(collarMesh, neck1Mesh, neck2Mesh, headMesh, nozzleMesh);
+    
+    // Seat the pump directly on top of the glass body
+    capGroup.position.y = h/2;
     capMesh = capGroup;
   }
   // 5. Mist (Spray)
@@ -805,15 +828,24 @@ let dragDistance = 0;
 
 const MAX_SLIDE_DISTANCE = 31.5;
 
+function getNormalizedMousePosition(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  return {
+    x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
+    y: -((event.clientY - rect.top) / rect.height) * 2 + 1
+  };
+}
+
 function onPointerDown(event) {
   if (window.scrollY > window.innerHeight) return;
   
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  const normMouse = getNormalizedMousePosition(event);
+  mouse.x = normMouse.x;
+  mouse.y = normMouse.y;
   raycaster.setFromCamera(mouse, camera);
 
   if (!drawerOpened) {
-    const intersectsDrawer = raycaster.intersectObject(drawerHitPlane);
+    const intersectsDrawer = raycaster.intersectObject(boxGroup, true);
     if (intersectsDrawer.length > 0) {
       isDragging = true;
       controls.enabled = false; // Disable auto-rotate when manually interacting
@@ -834,12 +866,13 @@ function onPointerDown(event) {
 function onPointerMove(event) {
   if (window.scrollY > window.innerHeight) return;
   
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  const normMouse = getNormalizedMousePosition(event);
+  mouse.x = normMouse.x;
+  mouse.y = normMouse.y;
   raycaster.setFromCamera(mouse, camera);
 
   if (!drawerOpened && !isDragging) {
-    const intersectsDrawerMove = raycaster.intersectObject(drawerHitPlane);
+    const intersectsDrawerMove = raycaster.intersectObject(boxGroup, true);
     if (intersectsDrawerMove.length > 0) {
       document.body.style.cursor = 'grab';
     } else {
@@ -865,6 +898,13 @@ function onPointerMove(event) {
       document.body.style.cursor = 'default';
       const indicator = document.getElementById('drag-indicator');
       if (indicator) indicator.classList.remove('visible');
+      const prompt = document.getElementById('tap-prompt');
+      if (prompt) prompt.style.opacity = '0';
+      const scrollInd = document.getElementById('scroll-indicator');
+      if (scrollInd) {
+        scrollInd.classList.remove('hidden');
+        scrollInd.classList.add('visible');
+      }
     }
     
     previousMousePosition = { x: event.clientX, y: event.clientY };
@@ -901,6 +941,13 @@ function onPointerUp() {
         drawerOpened = true;
         const indicator = document.getElementById('drag-indicator');
         if (indicator) indicator.classList.remove('visible');
+        const prompt = document.getElementById('tap-prompt');
+        if (prompt) prompt.style.opacity = '0';
+        const scrollInd = document.getElementById('scroll-indicator');
+        if (scrollInd) {
+          scrollInd.classList.remove('hidden');
+          scrollInd.classList.add('visible');
+        }
       });
     } else if (innerDrawer.position.x < 2.0) {
       animateDrawer(0);
@@ -909,6 +956,13 @@ function onPointerUp() {
         drawerOpened = true;
         const indicator = document.getElementById('drag-indicator');
         if (indicator) indicator.classList.remove('visible');
+        const prompt = document.getElementById('tap-prompt');
+        if (prompt) prompt.style.opacity = '0';
+        const scrollInd = document.getElementById('scroll-indicator');
+        if (scrollInd) {
+          scrollInd.classList.remove('hidden');
+          scrollInd.classList.add('visible');
+        }
       });
     }
   }

@@ -132,9 +132,20 @@ body {
 .cart-icon {
   position: absolute;
   right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
   cursor: pointer;
   color: var(--color-text);
   transition: color 0.3s;
+}
+
+.cart-icon svg {
+  width: 24px;
+  height: 24px;
+  pointer-events: none; /* Let the div catch the click */
 }
 
 .cart-icon:hover {
@@ -180,6 +191,32 @@ body {
   opacity: 1;
 }
 
+#tap-prompt {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 0.8rem 1.5rem;
+  border-radius: 2rem;
+  font-weight: 500;
+  color: var(--color-text);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  pointer-events: none;
+  z-index: 20;
+  animation: tapPulse 2s infinite;
+  transition: opacity 0.5s ease;
+  display: none;
+}
+
+@keyframes tapPulse {
+  0% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+  50% { transform: translate(-50%, -50%) scale(1.05); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+  100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+}
+
 
 
 .hand-icon, .drag-text-mobile {
@@ -206,6 +243,40 @@ body {
 
 .scroll-down-hint {
   display: none;
+}
+
+#scroll-indicator {
+  position: absolute;
+  bottom: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text);
+  z-index: 20;
+}
+
+#scroll-indicator span {
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+#scroll-indicator .arrow-down {
+  animation: bounce 2s infinite;
+}
+
+#scroll-indicator.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#scroll-indicator.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 1s ease;
 }
 
 /* Typography & Containers */
@@ -571,7 +642,7 @@ h2 {
   right: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 50;
+  z-index: 100;
   background: rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -617,12 +688,27 @@ h2 {
 @media (max-width: 768px) {
   #hero { height: 60vh; } /* Make explicit space for native page scroll */
   
+  #side-nav {
+    right: 0.5rem;
+    padding: 1rem 0.6rem;
+  }
+  
+  #scroll-indicator { display: none !important; } /* Desktop only indicator */
+  
+  #drag-indicator {
+    bottom: 2%; /* Move it down into the whitespace */
+    pointer-events: none !important; /* Force clicks to pass through */
+  }
+
+  #tap-prompt { display: block; pointer-events: none !important; }
+  .drag-text-mobile { display: none; }
+  
   .scroll-down-hint {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
-    margin-top: 2rem;
+    margin-top: 30px; /* Separator spacing */
     opacity: 0.8;
   }
   .scroll-down-hint p {

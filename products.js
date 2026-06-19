@@ -50,12 +50,12 @@ export const products = [
     inci: 'Aqua (Water), Glycerin, Propanediol, Pentylene Glycol, Betaine, Panthenol, Coco-Caprylate/Caprate, Limnanthes Alba (Meadowfoam) Seed Oil, Helianthus Annuus (Sunflower) Seed Oil, Bisabolol, Tocopherol, Chamomilla Recutita Flower Extract, Carbomer, Cellulose Gum, Dextrin Palmitate, 1,2-Hexanediol, Caprylyl Glycol, Disodium EDTA, Triethanolamine.',
     imageUrl: 'serum.png',
     imageAlt: 'Capsule Serum',
-    type: 'dropper',
+    type: 'pump',
     color: '#FFF9D2', // light yellow
-    capColor: '#FFFFFF',
+    capColor: '#3B4A3F',
     transmission: 0.95,
-    radius: 1.5,
-    height: 10
+    radius: 2.0,
+    height: 6.0
   },
   {
     id: 'moisturiser',

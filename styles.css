@@ -21,6 +21,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Let touch events pierce through the overarching layout sections */
@@ -39,6 +40,9 @@ body {
   color: var(--color-text);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none; /* Prevent text selection highlights globally */
+  -webkit-user-select: none;
 }
 
 /* --- Aurora / Ambient Glow --- */

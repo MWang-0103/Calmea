@@ -24,13 +24,13 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Let touch events pierce through the overarching layout sections */
-#hero, #brand-story, #active-ingredients, #ritual-guide, .product-card, .container, .inci-accordion-wrapper {
+/* Let touch events pierce through the hero section to the 3D canvas */
+#hero {
   pointer-events: none;
 }
 
 /* Explicitly re-enable interaction for the 3D canvas and actual UI elements */
-#canvas-container, button, a, p, h2, h3, h4, span, img, .nav-content, .cart-icon, .inci-content-inner {
+#canvas-container, button, a, p, h2, h3, h4, span, img, .nav-content, .cart-icon, .inci-content-inner, .ritual-grid, .product-card {
   pointer-events: auto;
 }
 
